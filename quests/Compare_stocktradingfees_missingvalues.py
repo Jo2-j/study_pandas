@@ -28,38 +28,42 @@ df = df.rename(columns={
 columns_to_check = ['은행 개설 계좌', '증권사 개설 계좌']  # 처리할 컬럼명 지정
 df_filled = df.copy()
 df_filled[columns_to_check] = df_filled[columns_to_check].fillna(0)
-rows_with_zeros = df_filled[columns_to_check].isin([0]).any(axis=1)
-df_no_zeros = df_filled[~rows_with_zeros]
+
+# 은행 계좌가 0인 경우, 증권사 계좌 값으로 채우기
+zeroBankAccount = df_filled['은행 개설 계좌'] == 0
+df_filled.loc[zeroBankAccount, '은행 개설 계좌'] = df_filled.loc[zeroBankAccount, '증권사 개설 계좌']
+
+# 증권사 계좌가 0인 경우, 은행 계좌 값으로 채우기
+zeroSecAccount = df_filled['증권사 개설 계좌'] == 0
+df_filled.loc[zeroSecAccount, '증권사 개설 계좌'] = df_filled.loc[zeroSecAccount, '은행 개설 계좌']
 
 # 새로운 컬럼 추가
-df_no_zeros['수수료합'] = df_no_zeros['증권사 개설 계좌'] + df_no_zeros['은행 개설 계좌']
+df_filled['수수료합'] = df_filled['증권사 개설 계좌'] + df_filled['은행 개설 계좌']
+
 # 거래대금 컬럼을 숫자로 변환
-
-
-# 한 번에 처리하는 방법
-df_no_zeros['거래대금'] = df_no_zeros['거래대금'].str.replace('원', '').replace(
+df_filled['거래대금'] = df_filled['거래대금'].str.replace('원', '').replace(
     {'억': '*100000000', '만': '*10000'}, regex=True).map(eval)
 
 
 # 수수료율 계산 (수수료합 / 거래대금)
-df_no_zeros['수수료율'] = df_no_zeros['수수료합'] / df_no_zeros['거래대금'] * 2
+df_filled['수수료율'] = df_filled['수수료합'] / df_filled['거래대금'] * 2
 
-finalSeries = df_no_zeros['수수료율']
+finalSeries = df_filled['수수료율']
 
 meanResult = finalSeries.mean()
 
 # 4. 회사별
 
 # 1. 회사별 평균 계산
-company_means = df_no_zeros.groupby('증권사명')['수수료율'].mean()
+company_means = df_filled.groupby('증권사명')['수수료율'].mean()
 
 # 2. 원래 DataFrame의 수수료율을 회사별 평균으로 대체
-df_no_zeros['수수료'] = df_no_zeros['증권사명'].map(company_means)
+df_filled['수수료'] = df_filled['증권사명'].map(company_means)
 
 # 3. 증권사별로
 
 # 증권사명으로 그룹화하여 나열
-grouped_df = df_no_zeros.groupby('증권사명').agg({
+grouped_df = df_filled.groupby('증권사명').agg({
     '수수료율': 'mean'
 }).round(4)
 
