@@ -37,33 +37,40 @@ df_filled.loc[zeroBankAccount, '은행 개설 계좌'] = df_filled.loc[zeroBankA
 zeroSecAccount = df_filled['증권사 개설 계좌'] == 0
 df_filled.loc[zeroSecAccount, '증권사 개설 계좌'] = df_filled.loc[zeroSecAccount, '은행 개설 계좌']
 
+# 두 계좌 모두 0인 경우를 찾기
+zeroAllAccount = (df_filled['증권사 개설 계좌'] == 0) & (df_filled['은행 개설 계좌'] == 0)
+
+# 두 계좌 모두 0인 행을 제외한 데이터프레임 생성
+df_no_zeros = df_filled[~zeroAllAccount]
+
+
 # 새로운 컬럼 추가
-df_filled['수수료합'] = df_filled['증권사 개설 계좌'] + df_filled['은행 개설 계좌']
+df_no_zeros['수수료합'] = df_no_zeros['증권사 개설 계좌'] + df_no_zeros['은행 개설 계좌']
 
 # 거래대금 컬럼을 숫자로 변환
-df_filled['거래대금'] = df_filled['거래대금'].str.replace('원', '').replace(
+df_no_zeros['거래대금'] = df_no_zeros['거래대금'].str.replace('원', '').replace(
     {'억': '*100000000', '만': '*10000'}, regex=True).map(eval)
 
 
 # 수수료율 계산 (수수료합 / 거래대금)
-df_filled['수수료율'] = df_filled['수수료합'] / df_filled['거래대금'] * 2
+df_no_zeros['수수료율'] = df_no_zeros['수수료합'] / df_no_zeros['거래대금'] * 2
 
-finalSeries = df_filled['수수료율']
+finalSeries = df_no_zeros['수수료율']
 
 meanResult = finalSeries.mean()
 
 # 4. 회사별
 
 # A. 회사별 평균 계산
-company_means = df_filled.groupby('증권사명')['수수료율'].mean()
+company_means = df_no_zeros.groupby('증권사명')['수수료율'].mean()
 
 # B. 원래 DataFrame의 수수료율을 회사별 평균으로 대체
-df_filled['수수료'] = df_filled['증권사명'].map(company_means)
+df_no_zeros['수수료'] = df_no_zeros['증권사명'].map(company_means)
 
 # C. 증권사별로
 
 # 증권사명으로 그룹화하여 나열
-grouped_df = df_filled.groupby('증권사명').agg({
+grouped_df = df_no_zeros.groupby('증권사명').agg({
     '수수료율': 'mean'
 }).round(4)
 
