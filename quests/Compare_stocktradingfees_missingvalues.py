@@ -54,13 +54,13 @@ meanResult = finalSeries.mean()
 
 # 4. 회사별
 
-# 1. 회사별 평균 계산
+# A. 회사별 평균 계산
 company_means = df_filled.groupby('증권사명')['수수료율'].mean()
 
-# 2. 원래 DataFrame의 수수료율을 회사별 평균으로 대체
+# B. 원래 DataFrame의 수수료율을 회사별 평균으로 대체
 df_filled['수수료'] = df_filled['증권사명'].map(company_means)
 
-# 3. 증권사별로
+# C. 증권사별로
 
 # 증권사명으로 그룹화하여 나열
 grouped_df = df_filled.groupby('증권사명').agg({
